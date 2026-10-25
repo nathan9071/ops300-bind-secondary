@@ -1,8 +1,8 @@
 pipeline {
-    // Never build on the controller: run on the SSH agent labelled "podman"
+    // run on the SSH agent labelled "podman"
     agent { label 'podman' }
 
-    // Check GitHub for new commits every ~2 minutes
+    // Check github for new commits every 2 minutes
     triggers {
         pollSCM('H/2 * * * *')
     }
@@ -20,7 +20,7 @@ pipeline {
         stage('Build') {
             steps {
                 script {
-                    // Tag = build number + short commit SHA, e.g. 7-a1b2c3d
+                    // Tag = build number + short commit SHA
                     env.TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.substring(0, 7)}"
                 }
                 sh 'podman build -t "$IMAGE:$TAG" .'
@@ -34,9 +34,28 @@ pipeline {
             }
         }
 
+        stage('Scan') {
+            steps {
+                // CVE scan with Trivy before pushing.
+                sh '''
+                    podman save -o image.tar "$IMAGE:$TAG"
+                    trivy image --input image.tar \
+                        --scanners vuln \
+                        --severity HIGH,CRITICAL \
+                        --exit-code 0 \
+                        --no-progress \
+                        --format table \
+                        --output trivy-report.txt
+                    cat trivy-report.txt
+                    rm -f image.tar
+                '''
+                archiveArtifacts artifacts: 'trivy-report.txt', fingerprint: true
+            }
+        }
+
         stage('Push') {
             steps {
-                // Registry login comes from Jenkins Credentials, never from this file
+                // Registry login comes from Jenkins Creds
                 withCredentials([usernamePassword(credentialsId: 'registry-creds',
                                                   usernameVariable: 'REG_USER',
                                                   passwordVariable: 'REG_PASS')]) {
