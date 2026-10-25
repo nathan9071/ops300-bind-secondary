@@ -1,0 +1,4 @@
+# Never commit secrets (TSIG keys, credentials)
+*.key
+*.pem
+*.tar

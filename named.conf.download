@@ -1,0 +1,11 @@
+zone "lab.nsteiman.300.ops" {
+    type secondary;
+    primaries { 192.168.25.10; };
+    file "/var/cache/bind/db.lab.nsteiman.300.ops";
+};
+
+zone "25.168.192.in-addr.arpa" {
+    type secondary;
+    primaries { 192.168.25.10; };
+    file "/var/cache/bind/db.192.168.25";
+};
